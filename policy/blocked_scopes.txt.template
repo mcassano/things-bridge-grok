@@ -1,0 +1,17 @@
+# Blocked scopes. One entry per line. Lines starting with # are ignored.
+#
+#   area:<name or id>      every project and to-do in that area
+#   project:<name or id>   the project and every to-do in it
+#   tag:<name or id>       items with that tag or any of its child tags,
+#                          including tags inherited from a project or area
+#   unfiled                to-dos that belong to no project and no area
+#
+# Names match case-insensitively and exactly (not as substrings). Blocked
+# items are dropped BEFORE the response JSON is written, so their titles and
+# notes never reach the assistant, and changes to them are refused.
+# The blocklist always takes precedence over the allowlist.
+#
+# Examples (remove the # to activate):
+# area:Health
+# project:Taxes 2026
+# tag:Private

@@ -1,0 +1,15 @@
+# Allowed scopes. Used only when read_policy.txt says "allowlist" (or the
+# hardened wrapper enforces allowlist mode). In that mode nothing is visible
+# unless it matches an entry below; the blocklist still takes precedence.
+#
+#   area:<name or id>
+#   project:<name or id>
+#   tag:<name or id>
+#   unfiled                to-dos that belong to no project and no area
+#                          (needed to read the Inbox or add unfiled to-dos)
+#
+# Examples:
+# area:Work
+# project:Kitchen Renovation
+# tag:Errands
+# unfiled

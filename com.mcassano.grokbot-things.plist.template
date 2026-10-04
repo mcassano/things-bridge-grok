@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.mcassano.grokbot-things launchd agent.
+
+  Fires when a file is added or modified inside control/requests/. The helper
+  drains every pending request, so launchd coalescing several events into one
+  run is harmless.
+
+  This template is filled in by an installer. {{CODE_ROOT}} is the trusted
+  executable tree; {{BRIDGE_ROOT}} is the user-owned request/response tree.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.mcassano.grokbot-things</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>{{CODE_ROOT}}/bin/grokbot-things-helper</string>
+  </array>
+
+  <key>WatchPaths</key>
+  <array>
+    <string>{{BRIDGE_ROOT}}/control/requests</string>
+  </array>
+
+  <key>ThrottleInterval</key>
+  <integer>1</integer>
+
+  <key>StandardOutPath</key>
+  <string>/dev/null</string>
+
+  <key>StandardErrorPath</key>
+  <string>/dev/null</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>KeepAlive</key>
+  <false/>
+
+  <key>ProcessType</key>
+  <string>Interactive</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/bin:/bin</string>
+    <!--
+      Optional: raise the in-memory snapshot limit (default 512 MB) for an
+      unusually large Things database. The wrapper forwards only this value.
+    -->
+    <!-- <key>THINGS_SNAPSHOT_MAX_MB</key> -->
+    <!-- <string>1024</string> -->
+  </dict>
+</dict>
+</plist>

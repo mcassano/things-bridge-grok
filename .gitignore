@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# Build artifacts (compiled and signed locally by the installers)
+bin/grokbot-things-helper
+bin/grokbot-things-confirm
+
+# Runtime state created by the installer or helper
+control/
+nonces/
+
+# User-specific policy (templates are tracked)
+policy/*.txt
+
+# Release output and editor scratch
+dist/
+*.swp
+.idea/
+.vscode/
