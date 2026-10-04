@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Unit tests and release version check
+        run: THINGS_TEST_PYTHON="$(command -v python)" ./tools/test.sh v1.0.0
+      - name: Shell syntax
+        run: bash -n install.sh install-hardened.sh install-skill.sh uninstall.sh uninstall-hardened.sh tools/select_python.sh tools/test.sh tools/cut-release.sh
+      - name: ShellCheck
+        run: shellcheck install.sh install-hardened.sh install-skill.sh uninstall.sh uninstall-hardened.sh tools/select_python.sh tools/test.sh tools/cut-release.sh
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Unit tests (includes wrapper build and behavior tests)
+        run: THINGS_TEST_PYTHON=/usr/bin/python3 ./tools/test.sh v1.0.0
+      - name: Lint launchd template
+        run: plutil -lint com.mcassano.grokbot-things.plist.template
+      - name: Compile hardened wrapper variant
+        run: >-
+          clang -Wall -Wextra -Werror -O2
+          -DHELPER_SCRIPT='"/tmp/helper.py"'
+          -DWRITE_GATE_SCRIPT='"/tmp/write_gate.py"'
+          -DCONFIRM_HELPER='"/tmp/grokbot-things-confirm"'
+          -DBRIDGE_ROOT='"/tmp/things-bridge"'
+          -DPYTHON_INTERPRETER='"/usr/bin/python3"'
+          -DEXPECTED_CODE_UID=0
+          -DREAD_POLICY_MODE='"allowlist"'
+          -DREAD_ALLOWLIST_PATH='"/tmp/allowed_scopes.txt"'
+          -DREQUIRE_ROOT_POLICY=1
+          -o /tmp/grokbot-things-helper bin/things_helper.c
+      - name: Compile native confirmation dialog
+        run: >-
+          clang -Wall -Wextra -Werror -O2 -fobjc-arc
+          -framework AppKit -framework Foundation
+          -o /tmp/grokbot-things-confirm bin/confirm_things_change.m
+      - name: Confirmation dialog rejects malformed input
+        run: |
+          set +e
+          echo '{"client_name": "x"}' | /tmp/grokbot-things-confirm
+          test $? -eq 2
