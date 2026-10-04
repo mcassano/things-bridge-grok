@@ -140,7 +140,8 @@ Returns `helper_version`, `protocol_version`, `host_display_name`,
 `launchd_label`, `allowed_actions`, `code_root`, `bridge_root`,
 `python_version`, `things_app` (`installed`, `path`, `version`, `bundle_id`),
 `read_policy` (`mode`, `allowlist_entries`, `blocklist_entries`,
-`root_owned_required`), `write_policy` (`confirm` or `disabled`),
+`root_owned_required`), `write_policy` (effective value: `confirm`,
+`preview`, or `disabled`; hardened installs report `confirm` for `preview`),
 `confirm_nonce_ttl_seconds`, and `checks`:
 
 | Check | Meaning |
@@ -271,6 +272,7 @@ Response:
              ["Deadline", "2026-11-15"], ["Tags", "Errands"]],
     "details": ""
   },
+  "dialog_required": true,
   "confirm_nonce": "Q2x…",
   "confirm_nonce_ttl_seconds": 120
 }
@@ -278,6 +280,8 @@ Response:
 
 `change` is the normalized form: trimmed title, canonical tag names, resolved
 relative dates, and only the fields supplied. The nonce is bound to it.
+`dialog_required` is `false` when the write policy is `preview`, meaning
+`change` applies without a native dialog.
 
 #### Operations
 
@@ -310,13 +314,14 @@ Other constraints:
 - The target, the destination, and the scope of a new item must all pass the
   read policy. In allowlist mode, creating an item with no project or area
   requires the `unfiled` scope.
-- `write_policy.txt` set to `disabled` rejects all previews and changes.
+- `write_policy.txt` set to `disabled` rejects all previews and changes; set
+  to `preview`, `change` skips the native dialog (standard installs only).
 
 ### `change`
 
 Same params as the preview, plus `confirm_nonce`. The helper re-validates
 against the current database, verifies and consumes the nonce, shows the
-native dialog, and runs the AppleScript.
+native dialog (unless the write policy is `preview`), and runs the AppleScript.
 
 ```json
 {"id": "c1", "action": "change", "params": {"operation": "complete", "id": "6Xq…", "confirm_nonce": "Q2x…"}}
@@ -330,12 +335,14 @@ native dialog, and runs the AppleScript.
     "operation": "complete",
     "id": "6Xq…",
     "url": "things:///show?id=6Xq…",
-    "applied_at": "2026-10-05T09:15:02"
+    "applied_at": "2026-10-05T09:15:02",
+    "approval": "dialog"
   }
 }
 ```
 
 For `add_todo` and `add_project`, `applied.id` is the new item's id.
+`applied.approval` is `dialog` or `preview`.
 
 | Error | Meaning |
 |---|---|

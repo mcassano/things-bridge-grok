@@ -76,10 +76,12 @@ and sandboxed apps without access to your home folder.
 - write read requests and collect any response the read policy allows. In
   standard mode that is everything not blocklisted; in hardened mode it is
   limited to the root-owned allowlist;
-- request a change preview, take the nonce, and submit the change. It still
-  **cannot apply the change silently**: the native dialog shows the item and
-  every field, and only a deliberate click on **Apply** proceeds. Cancel any
-  dialog you did not expect.
+- request a change preview, take the nonce, and submit the change. With the
+  default `confirm` write policy it still **cannot apply the change
+  silently**: the native dialog shows the item and every field, and only a
+  deliberate click on **Apply** proceeds. Cancel any dialog you did not
+  expect. With the opt-in `preview` write policy (standard installs only)
+  there is no dialog, and **such a process can change Things silently**.
 
 Read requests are not tied to an interactive session. Do not allow scopes whose
 disclosure to another local process would be unacceptable.
@@ -132,6 +134,16 @@ write and read the bridge, because that process can request its own preview.
 It prevents blind, replayed, and payload-swapped changes; the native dialog is
 what prevents silent ones.
 
+### Opting out of the dialog
+
+`policy/write_policy.txt` set to `preview` skips layer 2. Layers 1 and 3 and
+the assistant's in-chat confirmation still apply, but nothing on the Mac
+requires a human, so any process running as you can make changes. The file is
+user-writable, so hardened installs (which exist to resist same-user
+processes) ignore `preview` and always show the dialog. `status` reports the
+effective policy, `change_preview` returns `dialog_required`, and each applied
+change records `approval` (`dialog` or `preview`).
+
 ## Read policy
 
 - **Blocklist** (`policy/blocked_scopes.txt`): always enforced, in every mode,
@@ -148,6 +160,7 @@ what prevents silent ones.
   disclose what you meant to hide. An unrecognized `read_policy.txt` value
   falls back to allowlist mode; an unrecognized or untrusted
   `write_policy.txt` disables changes.
+- `write_policy.txt` accepts `confirm` (default), `preview`, or `disabled`.
 
 Scopes are inherited: a blocked area hides its projects and their to-dos; a
 blocked tag hides items tagged with it or any child tag, including tags

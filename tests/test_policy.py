@@ -115,6 +115,13 @@ class WritePolicyTests(BridgeTestCase):
         self.assertEqual(helper.load_write_policy(), "disabled")
         self.write_policy("write_policy.txt", "confirm\n", mode=0o666)
         self.assertEqual(helper.load_write_policy(), "disabled")
+        self.write_policy("write_policy.txt", "Preview\n")
+        self.assertEqual(helper.load_write_policy(), "preview")
+
+    def test_hardened_installs_ignore_preview(self) -> None:
+        self.write_policy("write_policy.txt", "preview\n")
+        with mock.patch.dict(os.environ, {"THINGS_REQUIRE_ROOT_POLICY": "1"}):
+            self.assertEqual(helper.load_write_policy(), "confirm")
 
 
 class ChangeScopeTests(PolicyFixture):

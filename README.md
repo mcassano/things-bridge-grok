@@ -175,7 +175,7 @@ Policy files live in `<bridge>/policy/`:
 | `read_policy.txt` | `blocklist` (standard default) or `allowlist`. Ignored by hardened installs, which always use their root-owned allowlist. |
 | `blocked_scopes.txt` | Scopes that are always hidden. Takes precedence over everything. |
 | `allowed_scopes.txt` | Scopes visible in allowlist mode (standard installs only). |
-| `write_policy.txt` | `confirm` (default) or `disabled` to turn off all changes. |
+| `write_policy.txt` | `confirm` (default): preview, chat approval, and a native dialog. `preview`: preview and chat approval only, no dialog (standard installs only; see below). `disabled`: no changes at all. |
 
 Scope entries, one per line:
 
@@ -209,6 +209,22 @@ prevention system; the read policy is the boundary that matters.
 
 Only then does a short AppleScript run. Every interpolated value is either a
 validated, escaped string literal, an integer, or a constant from a fixed table.
+
+#### Skipping the dialog
+
+If the dialog on every change is more friction than you want, put `preview`
+in `policy/write_policy.txt`:
+
+```bash
+printf 'preview\n' > policy/write_policy.txt   # takes effect on the next request
+```
+
+Changes then need only steps 1 and 2: the single-use preview nonce still
+prevents blind, replayed, or altered changes, and Grok still asks you in chat.
+The trade-off is that the dialog is the only layer a process running as your
+user cannot satisfy on its own, so with `preview` such a process could change
+your to-dos without you seeing anything. Hardened installs ignore `preview`
+and keep the dialog. Switch back with `printf 'confirm\n' > policy/write_policy.txt`.
 
 ---
 
@@ -259,7 +275,7 @@ Full protocol: [docs/PROTOCOL.md](./docs/PROTOCOL.md).
 | `projects`, `areas`, `tags` | Catalogs with open counts |
 | `completion_stats` | Throughput and lead time over a window |
 | `change_preview` | Validate a change and mint a confirm nonce |
-| `change` | Apply a previewed change after native-dialog approval |
+| `change` | Apply a previewed change (after native-dialog approval unless `write_policy` is `preview`) |
 
 ---
 

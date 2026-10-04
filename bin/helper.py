@@ -938,17 +938,32 @@ def load_privacy_policy() -> PrivacyPolicy:
     return PrivacyPolicy(mode=mode, blocklist=blocklist, allowlist=allowlist or ())
 
 
+WRITE_POLICIES = ("confirm", "preview", "disabled")
+
+
 def load_write_policy() -> str:
-    """Return ``confirm`` (default) or ``disabled``. Anything unexpected disables writes."""
+    """Return the effective write policy.
+
+    ``confirm`` (default): preview nonce, chat approval, and the native dialog.
+    ``preview``: preview nonce and chat approval only; no dialog.
+    ``disabled``: no changes at all.
+
+    Anything unexpected or untrusted disables writes. Hardened installs ignore
+    ``preview``: the policy file is user-writable, and the dialog is the only
+    layer that stops a same-user process from changing Things silently.
+    """
     lines = _read_policy_lines(WRITE_POLICY_PATH)
     if lines is None:
         return "disabled"
     if not lines:
         return "confirm"
     value = lines[0].strip().lower()
-    if value not in ("confirm", "disabled"):
+    if value not in WRITE_POLICIES:
         log(f"invalid write policy {value!r}; writes disabled")
         return "disabled"
+    if value == "preview" and os.environ.get("THINGS_REQUIRE_ROOT_POLICY") == "1":
+        log("write policy 'preview' is not honored by hardened installs; using 'confirm'")
+        return "confirm"
     return value
 
 
@@ -2205,32 +2220,34 @@ def _run_confirmation(description: dict) -> bool:
     raise RuntimeError(f"confirmation helper failed (rc={result.returncode}): {detail}")
 
 
-def _require_writes_enabled() -> None:
-    if load_write_policy() != "confirm":
+def _require_writes_enabled() -> str:
+    policy = load_write_policy()
+    if policy == "disabled":
         raise ValueError("changes are disabled by policy/write_policy.txt")
+    return policy
 
 
 def action_change_preview(params: dict, view: View) -> dict:
     """Validate a change and mint a single-use confirm nonce. Changes nothing."""
-    _require_writes_enabled()
+    policy = _require_writes_enabled()
     if "confirm_nonce" in params:
         raise ValueError("change_preview does not take confirm_nonce")
     change = normalize_change(params, view)
     return {
         "change": change,
         "summary": describe_change(change, view),
+        "dialog_required": policy == "confirm",
         "confirm_nonce": mint_confirm_nonce(change),
         "confirm_nonce_ttl_seconds": CONFIRM_NONCE_TTL,
     }
 
 
 def action_change(params: dict, view: View) -> dict:
-    """Apply a previewed change after native-dialog approval."""
-    _require_writes_enabled()
+    """Apply a previewed change, after native-dialog approval unless policy is ``preview``."""
+    policy = _require_writes_enabled()
     change = normalize_change(params, view)
     consume_confirm_nonce(params.get("confirm_nonce"), change)
-    description = describe_change(change, view)
-    if not _run_confirmation(description):
+    if policy == "confirm" and not _run_confirmation(describe_change(change, view)):
         raise RuntimeError("change cancelled by user or timed out (60s dialog limit)")
     script = build_change_script(change, view.lib)
     rc, stdout, stderr = _run_osascript(script)
@@ -2243,6 +2260,7 @@ def action_change(params: dict, view: View) -> dict:
             "id": item_id,
             "url": f"things:///show?id={item_id}" if item_id else None,
             "applied_at": datetime.now().isoformat(timespec="seconds"),
+            "approval": "dialog" if policy == "confirm" else "preview",
         }
     }
 

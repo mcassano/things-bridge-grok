@@ -38,7 +38,8 @@ Use it when the user asks to:
 
 You exchange JSON files with a launchd agent through a **bridge folder**.
 Reads never modify Things. Changes are two-step (`change_preview`, then
-`change`) and the user must also click **Apply** in a macOS dialog.
+`change`), and by default the user must also click **Apply** in a macOS
+dialog (the user can turn the dialog off with the `preview` write policy).
 
 ## Setup and discovery
 
@@ -62,6 +63,8 @@ Then call `status` first:
   is readable by design. Explain how to allow scopes (see Privacy policy);
   never change policy files yourself.
 - If `write_policy` is `disabled`, do not offer to change anything.
+- If `write_policy` is `preview`, the user has turned off the macOS dialog, so
+  your chat confirmation is the only human check. Be strict about it.
 
 ## Making a request
 
@@ -141,8 +144,10 @@ Never apply a change the user did not ask for. Every time:
    `confirm_nonce` from the preview. The nonce is single-use, bound to the
    normalized change, and expires after `confirm_nonce_ttl_seconds` (120s).
    If it expires, or the user edits the change, preview again.
-5. Tell the user a macOS dialog is waiting for them to click **Apply**
-   (Cancel is the default; it times out after 60s).
+5. If the preview's `dialog_required` is `true`, tell the user a macOS dialog
+   is waiting for them to click **Apply** (Cancel is the default; it times out
+   after 60s). If it is `false`, the change applies as soon as you send it, so
+   send it only after an unambiguous yes for exactly what you previewed.
 6. On success, report `applied.operation` and offer `applied.url`.
 
 | `operation` | Fields |

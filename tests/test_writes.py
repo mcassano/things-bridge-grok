@@ -232,6 +232,25 @@ class ChangeFlowTests(BridgeTestCase):
             helper.action_change(
                 {"operation": "complete", "id": self.todo, "confirm_nonce": preview["confirm_nonce"]}, self.view())
 
+    def test_preview_policy_skips_the_dialog_but_keeps_the_nonce(self) -> None:
+        self.write_policy("write_policy.txt", "preview\n")
+        with self.assertRaisesRegex(helper.WriteGateError, "missing confirm_nonce"):
+            helper.action_change({"operation": "complete", "id": self.todo}, self.view())
+        preview = self.preview(operation="complete", id=self.todo)
+        self.assertFalse(preview["dialog_required"])
+        result = helper.action_change(
+            {"operation": "complete", "id": self.todo, "confirm_nonce": preview["confirm_nonce"]}, self.view())
+        self.assertEqual(result["applied"]["approval"], "preview")
+        self.run_confirmation.assert_not_called()
+        self.run_osascript.assert_called_once()
+
+    def test_confirm_policy_reports_dialog_approval(self) -> None:
+        preview = self.preview(operation="complete", id=self.todo)
+        self.assertTrue(preview["dialog_required"])
+        result = helper.action_change(
+            {"operation": "complete", "id": self.todo, "confirm_nonce": preview["confirm_nonce"]}, self.view())
+        self.assertEqual(result["applied"]["approval"], "dialog")
+
     def test_writes_disabled(self) -> None:
         self.write_policy("write_policy.txt", "disabled\n")
         with self.assertRaisesRegex(ValueError, "disabled"):
